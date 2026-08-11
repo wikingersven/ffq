@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚒 Fahrzeugstatus — FF Quickborn Ost</title>
+<style>
+  :root {
+    --bg: #0f1923;
+    --card: #1a2a3a;
+    --border: #2a3a4a;
+    --text: #e0e0e0;
+    --muted: #8899aa;
+    --green: #4caf50;
+    --red: #f44336;
+    --yellow: #ffc107;
+    --blue: #2196f3;
+    --orange: #ff9800;
+    --purple: #9c27b0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #1a2a3a, #0d1a2a);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .header h1 { font-size: 1.4em; display: flex; align-items: center; gap: 10px; }
+  .header h1 .badge {
+    font-size: 0.55em;
+    background: var(--green);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 0.85em;
+    color: var(--muted);
+  }
+  .header-right button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+  }
+  .header-right button:hover { background: #2a3a4a; }
+
+  /* Config panel */
+  .config-panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    max-width: 500px;
+    margin: 40px auto;
+  }
+  .config-panel h2 { margin-bottom: 16px; font-size: 1.2em; }
+  .config-panel label { display: block; color: var(--muted); font-size: 0.88em; margin: 10px 0 4px; }
+  .config-panel input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.95em;
+  }
+  .config-panel input:focus { border-color: var(--blue); outline: none; }
+  .config-panel .btn-connect {
+    margin-top: 16px;
+    width: 100%;
+    background: var(--blue);
+    border: none;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .config-panel .btn-connect:hover { background: #1976d2; }
+  .config-panel .error { color: var(--red); font-size: 0.85em; margin-top: 8px; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    gap: 16px;
+    padding: 14px 20px;
+    overflow-x: auto;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .stat .num { font-size: 1.8em; font-weight: 800; }
+  .stat .label { font-size: 0.75em; color: var(--muted); text-transform: uppercase; }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+    padding: 16px 20px;
+  }
+
+  /* Vehicle card */
+  .vehicle-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    position: relative;
+    transition: transform 0.15s, border-color 0.3s;
+  }
+  .vehicle-card:hover { transform: translateY(-2px); }
+  .vehicle-card.status-1 { border-left: 4px solid var(--blue); }
+  .vehicle-card.status-2 { border-left: 4px solid var(--green); }
+  .vehicle-card.status-3 { border-left: 4px solid var(--orange); }
+  .vehicle-card.status-4 { border-left: 4px solid var(--red); }
+  .vehicle-card.status-5 { border-left: 4px solid var(--yellow); }
+  .vehicle-card.status-6 { border-left: 4px solid #666; }
+
+  .vehicle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .vehicle-icon { font-size: 2em; margin-right: 12px; }
+  .vehicle-name { font-size: 1.15em; font-weight: 700; }
+  .vehicle-id { font-size: 0.82em; color: var(--muted); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.82em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+  .status-badge.s-1 { background: #1a2a4a; color: var(--blue); }
+  .status-badge.s-1 .dot { background: var(--blue); }
+  .status-badge.s-2 { background: #1a3a1a; color: var(--green); }
+  .status-badge.s-2 .dot { background: var(--green); animation: pulse 2s infinite; }
+  .status-badge.s-3 { background: #3a2a0a; color: var(--orange); }
+  .status-badge.s-3 .dot { background: var(--orange); animation: pulse 1s infinite; }
+  .status-badge.s-4 { background: #3a1a1a; color: var(--red); }
+  .status-badge.s-4 .dot { background: var(--red); animation: pulse 1s infinite; }
+  .status-badge.s-5 { background: #3a3a0a; color: var(--yellow); }
+  .status-badge.s-5 .dot { background: var(--yellow); }
+  .status-badge.s-6 { background: #2a2a2a; color: #888; }
+  .status-badge.s-6 .dot { background: #888; }
+
+  .vehicle-details {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 16px;
+    margin-top: 10px;
+    font-size: 0.85em;
+  }
+  .detail-label { color: var(--muted); }
+  .detail-value { font-weight: 600; }
+
+  .location-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--blue);
+    text-decoration: none;
+    font-size: 0.82em;
+    margin-top: 8px;
+  }
+  .location-link:hover { text-decoration: underline; }
+
+  .last-update {
+    font-size: 0.78em;
+    color: var(--muted);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Loading */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: var(--muted);
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-banner {
+    background: #3a1a1a;
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin: 16px 20px;
+    display: none;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--muted);
+    font-size: 0.8em;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+  }
+
+  /* Auto-refresh indicator */
+  .refresh-bar {
+    height: 3px;
+    background: var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+  .refresh-bar .progress {
+    height: 100%;
+    background: var(--green);
+    width: 0%;
+    transition: width 1s linear;
+  }
+</style>
+</head>
+<body>
+
+<!-- Config Panel (shown when not configured) -->
+<div id="configPanel" class="config-panel" style="display:none;">
+  <h2>🔧 Home Assistant verbinden</h2>
+  <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px;">
+    Zugangsdaten werden nur lokal im Browser gespeichert (localStorage).
+  </p>
+  <label>Home Assistant URL</label>
+  <input type="text" id="cfgUrl" placeholder="http://192.168.1.215:8123">
+  <label>Long-Lived Access Token</label>
+  <input type="password" id="cfgToken" placeholder="eyJ0eXAiOiJKV1QiL...">
+  <button class="btn-connect" onclick="saveConfig()">Verbinden</button>
+  <div id="cfgError" class="error"></div>
+</div>
+
+<!-- Main content (hidden until configured) -->
+<div id="mainContent" style="display:none;">
+  <div class="header">
+    <h1>
+      🚒 Fahrzeugstatus
+      <span class="badge" id="liveIndicator">● LIVE</span>
+    </h1>
+    <div class="header-right">
+      <span id="lastRefresh">—</span>
+      <button onclick="loadVehicles()">↻ Aktualisieren</button>
+      <button onclick="resetConfig()">⚙</button>
+    </div>
+  </div>
+  <div class="refresh-bar"><div class="progress" id="refreshProgress"></div></div>
+
+  <div class="stats-bar" id="statsBar"></div>
+  <div id="errorBanner" class="error-banner"></div>
+  <div id="vehicleGrid" class="grid"></div>
+
+  <div class="footer">
+    FF Quickborn „Ost" — Fahrzeugstatus via Home Assistant / Divera 24/7<br>
+    Auto-Refresh alle 30 Sekunden
+  </div>
+</div>
+
+<script>
+const FMS_STATUS = {
+  1: { text: 'Einsatzbereit Funk', icon: '📻', color: 'blue' },
+  2: { text: 'Einsatzbereit Wache', icon: '🏠', color: 'green' },
+  3: { text: 'Einsatz übernommen', icon: '🚨', color: 'orange' },
+  4: { text: 'Am Einsatzort', icon: '📍', color: 'red' },
+  5: { text: 'Sprechwunsch', icon: '📞', color: 'yellow' },
+  6: { text: 'Nicht einsatzbereit', icon: '🔧', color: 'grey' },
+  7: { text: 'Patient aufgenommen', icon: '🏥', color: 'orange' },
+  8: { text: 'Am Transportziel', icon: '🏁', color: 'blue' },
+  9: { text: 'Handquittung', icon: '✋', color: 'purple' }
+};
+
+const VEHICLE_ICONS = {
+  'HLF': '🚒',
+  'TLF': '🚒',
+  'DLK': '🪜',
+  'LF': '🚒',
+  'MTW': '🚐',
+  'ELW': '🚗',
+  'RTW': '🚑',
+  'KTW': '🚑',
+  'GW': '🚛',
+  'AB': '📦',
+  'WLF': '🚛',
+  'Anhänger': '🔗',
+  'NEA': '⚡',
+  'Wache': '🏢'
+};
+
+let refreshTimer = null;
+let progressTimer = null;
+const REFRESH_INTERVAL = 30; // seconds
+
+// Config
+function getConfig() {
+  return {
+    url: localStorage.getItem('ha_url') || '',
+    token: localStorage.getItem('ha_token') || ''
+  };
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfgUrl').value.replace(/\/+$/, '');
+  const token = document.getElementById('cfgToken').value.trim();
+  if (!url || !token) {
+    document.getElementById('cfgError').textContent = 'Bitte URL und Token eingeben.';
+    return;
+  }
+  localStorage.setItem('ha_url', url);
+  localStorage.setItem('ha_token', token);
+  document.getElementById('cfgError').textContent = '';
+  init();
+}
+
+function resetConfig() {
+  if (confirm('Verbindungsdaten löschen?')) {
+    localStorage.removeItem('ha_url');
+    localStorage.removeItem('ha_token');
+    location.reload();
+  }
+}
+
+// API
+async function fetchStates() {
+  const cfg = getConfig();
+  const resp = await fetch(`${cfg.url}/api/states`, {
+    headers: { 'Authorization': `Bearer ${cfg.token}` }
+  });
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  return resp.json();
+}
+
+function parseVehicles(states) {
+  const vehicles = [];
+  const sensorMap = {};
+  const trackerMap = {};
+
+  for (const s of states) {
+    const eid = s.entity_id;
+    if (eid.startsWith('sensor.761284_vehicle_')) {
+      const vid = eid.replace('sensor.761284_vehicle_', '');
+      sensorMap[vid] = s;
+    }
+    if (eid.startsWith('device_tracker.761284_vehicletracker_')) {
+      const vid = eid.replace('device_tracker.761284_vehicletracker_', '');
+      trackerMap[vid] = s;
+    }
+  }
+
+  for (const [vid, sensor] of Object.entries(sensorMap)) {
+    const attrs = sensor.attributes || {};
+    const tracker = trackerMap[vid];
+    const trackerAttrs = tracker?.attributes || {};
+    const fmsStatus = parseInt(attrs.fmsstatus_id || sensor.state || '0');
+    const lat = parseFloat(attrs.lat || trackerAttrs.latitude || 0);
+    const lng = parseFloat(attrs.lng || trackerAttrs.longitude || 0);
+    const ts = parseInt(attrs.fmsstatus_ts || 0);
+
+    // Determine vehicle type icon
+    let icon = '🚒';
+    const fullname = attrs.fullname || attrs.shortname || '';
+    for (const [key, emoji] of Object.entries(VEHICLE_ICONS)) {
+      if (fullname.includes(key) || (attrs.shortname || '').includes(key) || (attrs.name || '').includes(key)) {
+        icon = emoji;
+        break;
+      }
+    }
+
+    vehicles.push({
+      id: vid,
+      shortname: (attrs.shortname || '').trim(),
+      fullname: (attrs.fullname || '').trim(),
+      callsign: (attrs.name || '').trim(),
+      fmsStatus,
+      fmsNote: attrs.fmsstatus_note || '',
+      lat,
+      lng,
+      hasLocation: lat !== 0 && lng !== 0,
+      lastUpdate: ts,
+      issi: attrs.issi || '',
+      icon,
+      crew: attrs.crew || {}
+    });
+  }
+
+  // Sort: active statuses first (3,4,7,8), then by name
+  vehicles.sort((a, b) => {
+    const activeA = [3,4,7,8].includes(a.fmsStatus) ? 0 : 1;
+    const activeB = [3,4,7,8].includes(b.fmsStatus) ? 0 : 1;
+    if (activeA !== activeB) return activeA - activeB;
+    return a.shortname.localeCompare(b.shortname);
+  });
+
+  return vehicles;
+}
+
+function renderStats(vehicles) {
+  const total = vehicles.length;
+  const ready = vehicles.filter(v => v.fmsStatus === 2).length;
+  const active = vehicles.filter(v => [3,4,7,8].includes(v.fmsStatus)).length;
+  const unavail = vehicles.filter(v => v.fmsStatus === 6).length;
+  const withLoc = vehicles.filter(v => v.hasLocation).length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat">
+      <div class="num" style="color:var(--text)">${total}</div>
+      <div class="label">Fahrzeuge</div>
+    </div>
+    <div class="stat">
+      <div class="num" style="color:var(--green)">${ready}</div>
+      <div class="label">Einsatzbereit</div>
+    </div>
+    <div class="stat">
+      <div class="num" style="color:var(--orange)">${active}</div>
+      <div class="label">Im Einsatz</div>
+    </div>
+    <div class="stat">
+      <div class="num" style="color:#888">${unavail}</div>
+      <div class="label">Außer Dienst</div>
+    </div>
+    <div class="stat">
+      <div class="num" style="color:var(--blue)">${withLoc}</div>
+      <div class="label">GPS aktiv</div>
+    </div>
+  `;
+}
+
+function renderVehicles(vehicles) {
+  const grid = document.getElementById('vehicleGrid');
+  grid.innerHTML = vehicles.map(v => {
+    const status = FMS_STATUS[v.fmsStatus] || { text: `Status ${v.fmsStatus}`, icon: '❓', color: 'grey' };
+    const statusClass = Math.min(v.fmsStatus, 6);
+    const lastUpdateStr = v.lastUpdate ? timeAgo(v.lastUpdate * 1000) : '—';
+    const crewCount = Object.keys(v.crew).length;
+
+    return `
+      <div class="vehicle-card status-${statusClass}">
+        <div class="vehicle-header">
+          <div style="display:flex;align-items:center;">
+            <span class="vehicle-icon">${v.icon}</span>
+            <div>
+              <div class="vehicle-name">${v.shortname || v.fullname}</div>
+              <div class="vehicle-id">${v.callsign}${v.issi ? ' · ISSI ' + v.issi : ''}</div>
+            </div>
+          </div>
+          <div class="status-badge s-${statusClass}">
+            <span class="dot"></span>
+            FMS ${v.fmsStatus}
+          </div>
+        </div>
+
+        <div style="margin:6px 0;font-size:0.92em;">
+          ${status.icon} <strong>${status.text}</strong>
+          ${v.fmsNote ? `<span style="color:var(--muted);"> — ${v.fmsNote}</span>` : ''}
+        </div>
+
+        <div class="vehicle-details">
+          <span class="detail-label">Typ</span>
+          <span class="detail-value">${v.fullname}</span>
+          ${crewCount > 0 ? `
+            <span class="detail-label">Besatzung</span>
+            <span class="detail-value">${crewCount} Person${crewCount !== 1 ? 'en' : ''}</span>
+          ` : ''}
+        </div>
+
+        ${v.hasLocation ? `
+          <a class="location-link" href="https://www.google.com/maps?q=${v.lat},${v.lng}" target="_blank" rel="noopener">
+            📍 ${v.lat.toFixed(5)}, ${v.lng.toFixed(5)} — Auf Karte anzeigen
+          </a>
+        ` : ''}
+
+        <div class="last-update">
+          Letztes FMS-Update: ${lastUpdateStr}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function timeAgo(timestamp) {
+  const now = Date.now();
+  const diff = Math.floor((now - timestamp) / 1000);
+  if (diff < 60) return 'gerade eben';
+  if (diff < 3600) return `vor ${Math.floor(diff / 60)} Min.`;
+  if (diff < 86400) return `vor ${Math.floor(diff / 3600)} Std.`;
+  const days = Math.floor(diff / 86400);
+  if (days < 30) return `vor ${days} Tag${days > 1 ? 'en' : ''}`;
+  return new Date(timestamp).toLocaleDateString('de-DE');
+}
+
+async function loadVehicles() {
+  const errorBanner = document.getElementById('errorBanner');
+  errorBanner.style.display = 'none';
+
+  try {
+    const states = await fetchStates();
+    const vehicles = parseVehicles(states);
+    renderStats(vehicles);
+    renderVehicles(vehicles);
+
+    document.getElementById('lastRefresh').textContent =
+      'Aktualisiert: ' + new Date().toLocaleTimeString('de-DE');
+    document.getElementById('liveIndicator').textContent = '● LIVE';
+
+    startProgressBar();
+  } catch (err) {
+    console.error('Fehler:', err);
+    errorBanner.textContent = `⚠️ Fehler beim Laden: ${err.message}`;
+    errorBanner.style.display = 'block';
+    document.getElementById('liveIndicator').textContent = '● OFFLINE';
+    document.getElementById('liveIndicator').style.background = 'var(--red)';
+  }
+}
+
+function startProgressBar() {
+  const bar = document.getElementById('refreshProgress');
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      bar.style.transition = `width ${REFRESH_INTERVAL}s linear`;
+      bar.style.width = '100%';
+    });
+  });
+}
+
+function init() {
+  const cfg = getConfig();
+  if (!cfg.url || !cfg.token) {
+    document.getElementById('configPanel').style.display = 'block';
+    document.getElementById('mainContent').style.display = 'none';
+    // Pre-fill default
+    document.getElementById('cfgUrl').value = 'http://192.168.1.215:8123';
+    return;
+  }
+
+  document.getElementById('configPanel').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+
+  // Show loading
+  document.getElementById('vehicleGrid').innerHTML = `
+    <div class="loading" style="grid-column:1/-1;">
+      <div class="spinner"></div>
+      Fahrzeugdaten werden geladen...
+    </div>
+  `;
+
+  loadVehicles();
+
+  // Auto-refresh
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadVehicles, REFRESH_INTERVAL * 1000);
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
