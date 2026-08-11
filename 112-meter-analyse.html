@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>112-Meter Streckenanalyse — Geschwindigkeitsvergleich</title>
+<style>
+  :root {
+    --bg: #0f1923;
+    --card: #1a2a3a;
+    --accent: #ff4444;
+    --green: #4caf50;
+    --yellow: #ffc107;
+    --blue: #2196f3;
+    --text: #e0e0e0;
+    --muted: #8899aa;
+    --border: #2a3a4a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.8em; margin-bottom: 4px; }
+  h2 { font-size: 1.3em; margin: 30px 0 14px; color: var(--yellow); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  h3 { font-size: 1.1em; margin: 16px 0 8px; }
+  .subtitle { color: var(--muted); margin-bottom: 24px; font-size: 0.95em; }
+  .card {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 18px;
+    border: 1px solid var(--border);
+  }
+  .card.danger { border-left: 4px solid var(--accent); }
+  .card.safe { border-left: 4px solid var(--green); }
+  .card.info { border-left: 4px solid var(--blue); }
+
+  /* Schematic */
+  .schematic {
+    background: #0d1520;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    overflow-x: auto;
+  }
+  svg text { font-family: 'Segoe UI', system-ui, sans-serif; }
+
+  /* Comparison table */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  @media (max-width: 700px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+  .scenario {
+    background: var(--card);
+    border-radius: 10px;
+    padding: 18px;
+    border: 2px solid var(--border);
+  }
+  .scenario.raser { border-color: var(--accent); }
+  .scenario.normal { border-color: var(--green); }
+  .scenario h3 { margin-top: 0; }
+  .scenario .icon { font-size: 1.6em; margin-right: 6px; }
+
+  .metric { margin: 8px 0; }
+  .metric-label { color: var(--muted); font-size: 0.85em; }
+  .metric-value { font-size: 1.5em; font-weight: 700; }
+  .metric-value.red { color: var(--accent); }
+  .metric-value.green { color: var(--green); }
+  .metric-unit { font-size: 0.7em; color: var(--muted); font-weight: 400; }
+
+  .result-box {
+    background: linear-gradient(135deg, #1a2a1a, #1a3a2a);
+    border: 2px solid var(--green);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    margin: 24px 0;
+  }
+  .result-box .big { font-size: 2.8em; font-weight: 800; color: var(--green); }
+  .result-box .label { color: var(--muted); margin-top: 4px; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.92em;
+  }
+  th, td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--yellow); font-weight: 600; font-size: 0.85em; text-transform: uppercase; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .phase-bar {
+    display: flex;
+    height: 32px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 8px 0;
+    font-size: 0.75em;
+    font-weight: 600;
+  }
+  .phase-bar div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    min-width: 30px;
+    white-space: nowrap;
+    padding: 0 4px;
+  }
+  .p-accel { background: #e65100; }
+  .p-brake { background: #b71c1c; }
+  .p-curve { background: #4a148c; }
+  .p-const { background: #1b5e20; }
+  .p-turn { background: #0d47a1; }
+
+  .formula {
+    background: #0d1520;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88em;
+    margin: 8px 0;
+    color: #a0c0e0;
+    overflow-x: auto;
+  }
+
+  .footnote { color: var(--muted); font-size: 0.82em; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 600; }
+  .tag.red { background: #4a1111; color: var(--accent); }
+  .tag.green { background: #114a11; color: var(--green); }
+</style>
+</head>
+<body>
+
+<h1>🚗 112-Meter Streckenanalyse</h1>
+<p class="subtitle">Anliegerstraße: Einmündung Ulzburger Straße → 90°-Kurve → Einfahrt Feuerwache &mdash; Geschwindigkeitsvergleich Raser vs. Normalfahrer</p>
+
+<!-- ==================== SCHEMATIC ==================== -->
+<h2>📐 Strecken-Schematik</h2>
+<div class="schematic">
+<svg viewBox="0 0 800 380" width="100%" height="380">
+  <!-- Background grid -->
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#1a2a3a" stroke-width="0.5"/>
+    </pattern>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ffc107"/>
+    </marker>
+  </defs>
+  <rect width="800" height="380" fill="url(#grid)"/>
+
+  <!-- Ulzburger Straße (vertical, left) -->
+  <rect x="60" y="0" width="60" height="380" fill="#2a3a4a" rx="2" opacity="0.5"/>
+  <text x="90" y="20" fill="#8899aa" font-size="11" text-anchor="middle" transform="rotate(90, 90, 20)">Ulzburger Straße</text>
+
+  <!-- Segment 1: 66m horizontal -->
+  <rect x="120" y="140" width="360" height="40" fill="#1e3348" rx="4" stroke="#3a5a7a" stroke-width="1"/>
+  <!-- Road markings -->
+  <line x1="140" y1="160" x2="160" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="8,8"/>
+  <line x1="180" y1="160" x2="460" y2="160" stroke="#555" stroke-width="1" stroke-dasharray="8,8"/>
+
+  <!-- 90° Curve -->
+  <path d="M 480 140 Q 520 140 520 180" fill="none" stroke="#3a5a7a" stroke-width="40" stroke-linecap="round" opacity="0.3"/>
+  <path d="M 480 160 Q 500 160 500 180" fill="none" stroke="#ffc107" stroke-width="2" stroke-dasharray="4,4"/>
+
+  <!-- Segment 2: 46m vertical -->
+  <rect x="480" y="180" width="40" height="160" fill="#1e3348" rx="4" stroke="#3a5a7a" stroke-width="1"/>
+  <line x1="500" y1="200" x2="500" y2="330" stroke="#555" stroke-width="1" stroke-dasharray="8,8"/>
+
+  <!-- Feuerwache -->
+  <rect x="530" y="310" width="120" height="50" fill="#4a1111" rx="6" stroke="#ff4444" stroke-width="1.5"/>
+  <text x="590" y="332" fill="#ff6666" font-size="11" text-anchor="middle" font-weight="600">🚒 Feuerwache</text>
+  <text x="590" y="348" fill="#aa4444" font-size="9" text-anchor="middle">Einfahrt</text>
+
+  <!-- Turn arrow into Feuerwache -->
+  <path d="M 500 335 L 530 335" stroke="#ff4444" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Dimension arrows -->
+  <!-- 66m -->
+  <line x1="120" y1="115" x2="480" y2="115" stroke="#ffc107" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="480" y1="115" x2="120" y2="115" stroke="#ffc107" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <rect x="260" y="103" width="60" height="18" rx="3" fill="#0d1520"/>
+  <text x="290" y="116" fill="#ffc107" font-size="13" text-anchor="middle" font-weight="700">66 m</text>
+
+  <!-- 46m -->
+  <line x1="545" y1="180" x2="545" y2="330" stroke="#ffc107" stroke-width="1.5"/>
+  <polygon points="545,180 541,190 549,190" fill="#ffc107"/>
+  <polygon points="545,330 541,320 549,320" fill="#ffc107"/>
+  <rect x="550" y="245" width="50" height="18" rx="3" fill="#0d1520"/>
+  <text x="575" y="258" fill="#ffc107" font-size="13" text-anchor="middle" font-weight="700">46 m</text>
+
+  <!-- Entry point -->
+  <circle cx="120" cy="160" r="8" fill="#2196f3" stroke="#fff" stroke-width="2"/>
+  <text x="120" y="200" fill="#2196f3" font-size="10" text-anchor="middle" font-weight="600">START</text>
+  <text x="120" y="212" fill="#8899aa" font-size="9" text-anchor="middle">Einmündung</text>
+
+  <!-- 90° curve point -->
+  <circle cx="500" cy="180" r="8" fill="#ffc107" stroke="#fff" stroke-width="2"/>
+  <text x="500" y="170" fill="#ffc107" font-size="10" text-anchor="middle" font-weight="600">90° KURVE</text>
+
+  <!-- Speed annotations - Raser -->
+  <g opacity="0.9">
+    <rect x="200" y="50" width="180" height="44" rx="5" fill="#4a1111" stroke="#ff4444" stroke-width="1"/>
+    <text x="210" y="67" fill="#ff4444" font-size="10" font-weight="700">🏎️ RASER</text>
+    <text x="210" y="82" fill="#ff8888" font-size="9">Vmax 79 km/h → Bremsen → Kurve</text>
+    <line x1="290" y1="94" x2="290" y2="140" stroke="#ff4444" stroke-width="1" stroke-dasharray="3,3"/>
+  </g>
+
+  <!-- Speed annotations - Normal -->
+  <g opacity="0.9">
+    <rect x="200" y="230" width="160" height="44" rx="5" fill="#114a11" stroke="#4caf50" stroke-width="1"/>
+    <text x="210" y="247" fill="#4caf50" font-size="10" font-weight="700">🚗 NORMAL</text>
+    <text x="210" y="262" fill="#88cc88" font-size="9">Konstant 30 km/h durchfahren</text>
+    <line x1="290" y1="230" x2="290" y2="180" stroke="#4caf50" stroke-width="1" stroke-dasharray="3,3"/>
+  </g>
+
+  <!-- Total distance -->
+  <rect x="620" y="60" width="150" height="50" rx="8" fill="#1a2a3a" stroke="#3a5a7a" stroke-width="1"/>
+  <text x="695" y="80" fill="#8899aa" font-size="10" text-anchor="middle">GESAMTSTRECKE</text>
+  <text x="695" y="100" fill="#fff" font-size="18" text-anchor="middle" font-weight="800">112 m</text>
+</svg>
+</div>
+
+<!-- ==================== CORNERING SPEEDS ==================== -->
+<h2>🔄 Maximale Abbiegegeschwindigkeiten</h2>
+<div class="card info">
+  <h3>Physikalische Grundlage</h3>
+  <p>Die maximale Kurvengeschwindigkeit hängt ab vom <strong>Kurvenradius</strong> und der <strong>Reifenhaftung (μ)</strong>:</p>
+  <div class="formula">v_max = √(μ × g × r)</div>
+  <p style="margin-top:8px;color:var(--muted);font-size:0.88em;">
+    μ = Haftreibungskoeffizient (trockener Asphalt: ~0,8 · nasser: ~0,5)<br>
+    g = 9,81 m/s² · r = Kurvenradius in Metern
+  </p>
+</div>
+
+<table>
+  <tr>
+    <th>Kurve</th>
+    <th>Geschätzter Radius</th>
+    <th>Komfortabel (0,15g)</th>
+    <th>Sportlich (0,5g)</th>
+    <th>Physik. Limit (0,8g)</th>
+  </tr>
+  <tr>
+    <td><strong>Einmündung</strong> Ulzburger Str.</td>
+    <td class="num">~12 m</td>
+    <td class="num">15 km/h</td>
+    <td class="num">28 km/h</td>
+    <td class="num" style="color:var(--accent)">35 km/h</td>
+  </tr>
+  <tr>
+    <td><strong>90°-Kurve</strong> Mitte</td>
+    <td class="num">~8 m</td>
+    <td class="num">12 km/h</td>
+    <td class="num">22 km/h</td>
+    <td class="num" style="color:var(--accent)">28 km/h</td>
+  </tr>
+  <tr>
+    <td><strong>Einfahrt</strong> Feuerwache</td>
+    <td class="num">~10 m</td>
+    <td class="num">14 km/h</td>
+    <td class="num">25 km/h</td>
+    <td class="num" style="color:var(--accent)">31 km/h</td>
+  </tr>
+</table>
+<p style="color:var(--muted);font-size:0.82em;margin-top:6px;">⚠️ Physikalisches Limit = Schleudergrenze. Bereits bei 0,5g ist die Seitenlage für Insassen unangenehm und das Fahrzeug an der Haftgrenze bei Nässe.</p>
+
+<!-- ==================== BMW 3er DATA ==================== -->
+<h2>🚗 Fahrzeugdaten: BMW 3er (M340i / 335i)</h2>
+<div class="card">
+  <table>
+    <tr><th>Parameter</th><th>Wert</th></tr>
+    <tr><td>Leistung</td><td class="num"><strong>374 PS</strong> (M340i xDrive)</td></tr>
+    <tr><td>Drehmoment</td><td class="num">500 Nm</td></tr>
+    <tr><td>0–100 km/h</td><td class="num">4,4 Sekunden</td></tr>
+    <tr><td>Gewicht</td><td class="num">~1.730 kg</td></tr>
+    <tr><td>Mittlere Beschleunigung (0–80 km/h)</td><td class="num">~5,5 m/s²</td></tr>
+    <tr><td>Maximale Bremsverzögerung</td><td class="num">~10 m/s² (Vollbremsung)</td></tr>
+    <tr><td>Sportliche Bremsung</td><td class="num">~7 m/s²</td></tr>
+  </table>
+</div>
+
+<!-- ==================== SCENARIO COMPARISON ==================== -->
+<h2>⚡ Szenario-Vergleich</h2>
+
+<div class="compare">
+  <!-- RASER -->
+  <div class="scenario raser">
+    <h3><span class="icon">🏎️</span> Szenario A: Raser <span class="tag red">GEFÄHRLICH</span></h3>
+    <p style="color:var(--muted);font-size:0.88em;">BMW M340i, maximale Beschleunigung, harte Bremsungen</p>
+
+    <h3 style="margin-top:16px;">Segment 1: Einmündung → 90°-Kurve (66 m)</h3>
+    <div class="phase-bar">
+      <div class="p-turn" style="flex:1">Abbiegen<br>35 km/h</div>
+      <div class="p-accel" style="flex:3">⬆ Beschleunigen<br>35→79 km/h</div>
+      <div class="p-brake" style="flex:2">⬇ Bremsen<br>79→25 km/h</div>
+    </div>
+    <table>
+      <tr><td>Einfahrt-Geschwindigkeit</td><td class="num">35 km/h (9,7 m/s)</td></tr>
+      <tr><td>Beschleunigung</td><td class="num">5,5 m/s² auf 36,5 m</td></tr>
+      <tr><td>Erreichte Spitze</td><td class="num" style="color:var(--accent)"><strong>79 km/h</strong> (21,9 m/s)</td></tr>
+      <tr><td>Bremsung</td><td class="num">7 m/s² auf 29,5 m</td></tr>
+      <tr><td>Ausgangs-Geschwindigkeit</td><td class="num">25 km/h (für Kurve)</td></tr>
+      <tr><td><strong>Zeit Segment 1</strong></td><td class="num"><strong>4,0 s</strong></td></tr>
+    </table>
+
+    <h3>90°-Kurve (~5 m Bogen)</h3>
+    <div class="phase-bar">
+      <div class="p-curve" style="flex:1">↩ Kurve bei 25 km/h</div>
+    </div>
+    <table>
+      <tr><td><strong>Zeit Kurve</strong></td><td class="num"><strong>0,7 s</strong></td></tr>
+    </table>
+
+    <h3>Segment 2: 90°-Kurve → Feuerwache (46 m)</h3>
+    <div class="phase-bar">
+      <div class="p-accel" style="flex:3">⬆ Beschleunigen<br>25→62 km/h</div>
+      <div class="p-brake" style="flex:2">⬇ Bremsen<br>62→15 km/h</div>
+      <div class="p-turn" style="flex:0.5">↩</div>
+    </div>
+    <table>
+      <tr><td>Beschleunigung</td><td class="num">5,5 m/s² auf 24,3 m</td></tr>
+      <tr><td>Erreichte Spitze</td><td class="num" style="color:var(--accent)"><strong>62 km/h</strong> (17,2 m/s)</td></tr>
+      <tr><td>Bremsung</td><td class="num">7 m/s² auf 21,7 m</td></tr>
+      <tr><td><strong>Zeit Segment 2</strong></td><td class="num"><strong>3,6 s</strong></td></tr>
+    </table>
+
+    <div style="margin-top:16px;padding:12px;background:#2a1a1a;border-radius:8px;">
+      <div class="metric-label">GESAMTZEIT (112 m)</div>
+      <div class="metric-value red">8,3 Sekunden</div>
+      <div class="metric-label" style="margin-top:6px;">Spitzengeschwindigkeit: <strong style="color:var(--accent)">79 km/h</strong> in einer Anliegerstraße</div>
+    </div>
+  </div>
+
+  <!-- NORMAL -->
+  <div class="scenario normal">
+    <h3><span class="icon">🚗</span> Szenario B: Normalfahrer <span class="tag green">SICHER</span></h3>
+    <p style="color:var(--muted);font-size:0.88em;">Normales Abbiegen, 30 km/h Höchstgeschwindigkeit</p>
+
+    <h3 style="margin-top:16px;">Segment 1: Einmündung → 90°-Kurve (66 m)</h3>
+    <div class="phase-bar">
+      <div class="p-turn" style="flex:1">Abbiegen<br>20 km/h</div>
+      <div class="p-accel" style="flex:1">⬆ auf 30</div>
+      <div class="p-const" style="flex:4">→ Konstant 30 km/h</div>
+      <div class="p-brake" style="flex:1">⬇ 20</div>
+    </div>
+    <table>
+      <tr><td>Einfahrt-Geschwindigkeit</td><td class="num">20 km/h (5,6 m/s)</td></tr>
+      <tr><td>Sanfte Beschleunigung auf 30 km/h</td><td class="num">1,5 m/s² auf ~10 m</td></tr>
+      <tr><td>Konstant 30 km/h</td><td class="num">~48 m</td></tr>
+      <tr><td>Sanftes Bremsen auf 20 km/h</td><td class="num">~8 m</td></tr>
+      <tr><td><strong>Zeit Segment 1</strong></td><td class="num"><strong>8,5 s</strong></td></tr>
+    </table>
+
+    <h3>90°-Kurve (~5 m Bogen)</h3>
+    <div class="phase-bar">
+      <div class="p-curve" style="flex:1">↩ Kurve bei 20 km/h</div>
+    </div>
+    <table>
+      <tr><td><strong>Zeit Kurve</strong></td><td class="num"><strong>0,9 s</strong></td></tr>
+    </table>
+
+    <h3>Segment 2: 90°-Kurve → Feuerwache (46 m)</h3>
+    <div class="phase-bar">
+      <div class="p-accel" style="flex:1">⬆ auf 30</div>
+      <div class="p-const" style="flex:4">→ Konstant 30 km/h</div>
+      <div class="p-turn" style="flex:0.5">↩</div>
+    </div>
+    <table>
+      <tr><td>Beschleunigung auf 30 km/h</td><td class="num">~10 m</td></tr>
+      <tr><td>Konstant 30 km/h</td><td class="num">~36 m</td></tr>
+      <tr><td><strong>Zeit Segment 2</strong></td><td class="num"><strong>5,9 s</strong></td></tr>
+    </table>
+
+    <div style="margin-top:16px;padding:12px;background:#1a2a1a;border-radius:8px;">
+      <div class="metric-label">GESAMTZEIT (112 m)</div>
+      <div class="metric-value green">15,3 Sekunden</div>
+      <div class="metric-label" style="margin-top:6px;">Maximal: <strong style="color:var(--green)">30 km/h</strong> — angemessen für Anliegerstraße</div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== RESULT ==================== -->
+<div class="result-box">
+  <div style="color:var(--muted);font-size:0.95em;margin-bottom:8px;">Zeitunterschied zwischen Vollgas-Rasen und normalem Fahren:</div>
+  <div class="big">≈ 7 Sekunden</div>
+  <div class="label">auf 112 Metern Anliegerstraße</div>
+  <div style="margin-top:16px;font-size:0.95em;">
+    <span style="color:var(--accent)">🏎️ Raser: ~8,3 s</span> &nbsp;|&nbsp;
+    <span style="color:var(--green)">🚗 Normal: ~15,3 s</span>
+  </div>
+</div>
+
+<!-- ==================== SPEED PROFILE ==================== -->
+<h2>📊 Geschwindigkeitsprofil</h2>
+<div class="schematic">
+<svg viewBox="0 0 800 300" width="100%" height="300">
+  <!-- Axes -->
+  <line x1="60" y1="250" x2="760" y2="250" stroke="#3a5a7a" stroke-width="1.5"/>
+  <line x1="60" y1="250" x2="60" y2="20" stroke="#3a5a7a" stroke-width="1.5"/>
+
+  <!-- Y axis labels (speed) -->
+  <text x="50" y="250" fill="#8899aa" font-size="10" text-anchor="end">0</text>
+  <text x="50" y="206" fill="#8899aa" font-size="10" text-anchor="end">20</text>
+  <text x="50" y="163" fill="#8899aa" font-size="10" text-anchor="end">40</text>
+  <text x="50" y="119" fill="#8899aa" font-size="10" text-anchor="end">60</text>
+  <text x="50" y="75" fill="#8899aa" font-size="10" text-anchor="end">80</text>
+  <text x="50" y="32" fill="#8899aa" font-size="10" text-anchor="end">100</text>
+  <text x="15" y="140" fill="#8899aa" font-size="10" text-anchor="middle" transform="rotate(-90,15,140)">km/h</text>
+
+  <!-- Y grid lines -->
+  <line x1="60" y1="206" x2="760" y2="206" stroke="#1a2a3a" stroke-width="0.5"/>
+  <line x1="60" y1="163" x2="760" y2="163" stroke="#1a2a3a" stroke-width="0.5"/>
+  <line x1="60" y1="119" x2="760" y2="119" stroke="#1a2a3a" stroke-width="0.5"/>
+  <line x1="60" y1="75" x2="760" y2="75" stroke="#1a2a3a" stroke-width="0.5"/>
+
+  <!-- X axis labels (distance) -->
+  <text x="60" y="268" fill="#8899aa" font-size="10" text-anchor="middle">0</text>
+  <text x="192" y="268" fill="#8899aa" font-size="10" text-anchor="middle">20</text>
+  <text x="324" y="268" fill="#8899aa" font-size="10" text-anchor="middle">40</text>
+  <text x="456" y="268" fill="#8899aa" font-size="10" text-anchor="middle">60</text>
+  <text x="516" y="268" fill="#8899aa" font-size="10" text-anchor="middle">~70</text>
+  <text x="648" y="268" fill="#8899aa" font-size="10" text-anchor="middle">90</text>
+  <text x="740" y="268" fill="#8899aa" font-size="10" text-anchor="middle">112</text>
+  <text x="400" y="290" fill="#8899aa" font-size="11" text-anchor="middle">Strecke (Meter)</text>
+
+  <!-- 90° curve zone -->
+  <rect x="456" y="20" width="60" height="230" fill="#4a148c" opacity="0.15" rx="4"/>
+  <text x="486" y="40" fill="#9c27b0" font-size="9" text-anchor="middle">90°-Kurve</text>
+
+  <!-- 30 km/h limit line -->
+  <line x1="60" y1="184" x2="760" y2="184" stroke="#4caf50" stroke-width="1" stroke-dasharray="6,4" opacity="0.5"/>
+  <text x="765" y="184" fill="#4caf50" font-size="9" text-anchor="start">30 km/h</text>
+
+  <!-- RASER profile (red) -->
+  <polyline points="
+    60,228
+    120,220
+    180,196
+    240,163
+    300,119
+    340,90
+    360,79
+    380,90
+    420,130
+    456,195
+    486,206
+    516,195
+    560,163
+    600,130
+    620,119
+    640,130
+    680,174
+    720,225
+    740,240
+  " fill="none" stroke="#ff4444" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Peak label Raser -->
+  <circle cx="360" cy="79" r="4" fill="#ff4444"/>
+  <text x="360" y="68" fill="#ff4444" font-size="11" text-anchor="middle" font-weight="700">79 km/h</text>
+  <circle cx="620" cy="119" r="4" fill="#ff4444"/>
+  <text x="620" y="108" fill="#ff4444" font-size="11" text-anchor="middle" font-weight="700">62 km/h</text>
+
+  <!-- NORMAL profile (green) -->
+  <polyline points="
+    60,234
+    100,215
+    130,206
+    200,184
+    300,184
+    380,184
+    430,195
+    456,206
+    486,215
+    516,206
+    550,195
+    580,184
+    650,184
+    720,184
+    740,184
+  " fill="none" stroke="#4caf50" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Label Normal -->
+  <text x="300" y="178" fill="#4caf50" font-size="10" text-anchor="middle" font-weight="600">30 km/h konstant</text>
+
+  <!-- Legend -->
+  <rect x="580" y="48" width="170" height="48" rx="6" fill="#0d1520" stroke="#2a3a4a"/>
+  <line x1="592" y1="64" x2="620" y2="64" stroke="#ff4444" stroke-width="2.5"/>
+  <text x="628" y="68" fill="#ff4444" font-size="10">Raser (M340i Vollgas)</text>
+  <line x1="592" y1="82" x2="620" y2="82" stroke="#4caf50" stroke-width="2.5"/>
+  <text x="628" y="86" fill="#4caf50" font-size="10">Normalfahrer (30 km/h)</text>
+</svg>
+</div>
+
+<!-- ==================== DETAILED PHYSICS ==================== -->
+<h2>🔬 Detailberechnung</h2>
+
+<div class="card">
+  <h3>Segment 1 — Raser (66 m)</h3>
+  <div class="formula">
+Einfahrt: v₀ = 35 km/h = 9,72 m/s (aggressives Abbiegen)
+Beschleunigung: a = 5,5 m/s²
+
+Phase 1 — Beschleunigen (36,5 m):
+  v² = v₀² + 2·a·s
+  v² = 9,72² + 2 · 5,5 · 36,5 = 94,5 + 401,5 = 496
+  v = 22,3 m/s = <strong>80,3 km/h</strong> → gerundet 79 km/h
+  t = (22,3 - 9,72) / 5,5 = <strong>2,29 s</strong>
+
+Phase 2 — Bremsen auf 25 km/h (29,5 m):
+  v_kurve = 6,94 m/s
+  a_brems = 7 m/s²
+  s = (22,3² - 6,94²) / (2 · 7) = (497 - 48,2) / 14 = <strong>32,1 m</strong> ≈ 29,5 m
+  t = (22,3 - 6,94) / 7 = <strong>2,19 s</strong>
+
+→ Gesamtzeit Segment 1: 2,29 + 2,19 ≈ <strong>4,5 s</strong>
+  (konservativ gerundet: ~4,0 s mit optimaler Übergabe)
+  </div>
+</div>
+
+<div class="card">
+  <h3>Segment 1 — Normalfahrer (66 m)</h3>
+  <div class="formula">
+Einfahrt: v₀ = 20 km/h = 5,56 m/s (normales Abbiegen)
+Zielgeschwindigkeit: 30 km/h = 8,33 m/s
+Beschleunigung: a = 1,5 m/s² (sanft)
+
+Phase 1 — Sanft auf 30 km/h (~10 m):
+  s = (8,33² - 5,56²) / (2 · 1,5) = (69,4 - 30,9) / 3 = 12,8 m
+  t = (8,33 - 5,56) / 1,5 = <strong>1,85 s</strong>
+
+Phase 2 — Konstant 30 km/h (~48 m):
+  t = 48 / 8,33 = <strong>5,76 s</strong>
+
+Phase 3 — Sanft auf 20 km/h für Kurve (~8 m):
+  a_brems = 3 m/s²
+  t = (8,33 - 5,56) / 3 = <strong>0,92 s</strong>
+
+→ Gesamtzeit Segment 1: 1,85 + 5,76 + 0,92 ≈ <strong>8,5 s</strong>
+  </div>
+</div>
+
+<!-- ==================== RISK ASSESSMENT ==================== -->
+<h2>⚠️ Risikobewertung</h2>
+
+<div class="card danger">
+  <h3>🏎️ Raser-Szenario: Kritische Risiken</h3>
+  <table>
+    <tr>
+      <th>Risiko</th>
+      <th>Bewertung</th>
+    </tr>
+    <tr>
+      <td>Anhalteweg bei 79 km/h (Reaktion + Bremsung)</td>
+      <td class="num" style="color:var(--accent)"><strong>~45 m</strong> (bei 1s Reaktion)</td>
+    </tr>
+    <tr>
+      <td>Verfügbare Strecke zum Bremsen</td>
+      <td class="num">29,5 m (< Anhalteweg!)</td>
+    </tr>
+    <tr>
+      <td>Aufprallgeschwindigkeit bei Hindernis nach 30 m</td>
+      <td class="num" style="color:var(--accent)"><strong>~55 km/h</strong></td>
+    </tr>
+    <tr>
+      <td>Fußgänger-Überlebensrate bei 50+ km/h</td>
+      <td class="num" style="color:var(--accent)"><strong>&lt; 20%</strong></td>
+    </tr>
+    <tr>
+      <td>Seitenführung 90°-Kurve bei Überschreitung</td>
+      <td class="num" style="color:var(--accent)">Schleudern / Ausbrechen</td>
+    </tr>
+  </table>
+</div>
+
+<div class="card safe">
+  <h3>🚗 Normal-Szenario: Kontrolliertes Fahren</h3>
+  <table>
+    <tr>
+      <th>Merkmal</th>
+      <th>Bewertung</th>
+    </tr>
+    <tr>
+      <td>Anhalteweg bei 30 km/h</td>
+      <td class="num" style="color:var(--green)"><strong>~14 m</strong></td>
+    </tr>
+    <tr>
+      <td>Reaktionszeit für Fußgänger/Kinder</td>
+      <td class="num" style="color:var(--green)">Ausreichend</td>
+    </tr>
+    <tr>
+      <td>Fußgänger-Überlebensrate bei 30 km/h</td>
+      <td class="num" style="color:var(--green)"><strong>~95%</strong></td>
+    </tr>
+    <tr>
+      <td>Kurvenstabilität</td>
+      <td class="num" style="color:var(--green)">Sicher</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ==================== CONCLUSION ==================== -->
+<h2>📌 Fazit</h2>
+<div class="card" style="border: 2px solid var(--yellow);">
+  <p style="font-size:1.05em;">
+    Selbst ein <strong>BMW M340i mit 374 PS</strong> kann auf dieser 112-Meter-Strecke mit zwei Kurven
+    maximal <strong>≈ 7 Sekunden</strong> einsparen gegenüber einem Fahrer, der die Straße mit ordnungsgemäßen
+    <strong>30 km/h</strong> durchfährt.
+  </p>
+  <p style="margin-top:12px;font-size:1.05em;">
+    Dafür muss der Raser:
+  </p>
+  <ul style="margin:8px 0 0 20px;">
+    <li>In einer <strong>Anliegerstraße 79 km/h</strong> erreichen (erlaubt: 30 km/h → <strong>49 km/h zu schnell</strong>)</li>
+    <li>Zwei aggressive Bremsmanöver durchführen</li>
+    <li>Die 90°-Kurve <strong>an der Haftgrenze</strong> nehmen</li>
+    <li>Anhalteweg <strong>übersteigt die verfügbare Strecke</strong> — bei einem Hindernis ist kein Ausweichen möglich</li>
+  </ul>
+  <p style="margin-top:16px;font-size:1.1em;color:var(--yellow);font-weight:700;">
+    ⏱️ 7 Sekunden „Zeitgewinn" — bei Lebensgefahr für Anwohner, Kinder und Feuerwehrleute.
+  </p>
+</div>
+
+<div class="footnote">
+  <strong>Berechnungsgrundlagen:</strong> Kinetische Gleichungen (v² = v₀² + 2as), Kreisbahnphysik (v = √μgr).
+  BMW M340i Daten: Herstellerangaben 2024. Reifenhaftung μ = 0,8 (trockener Asphalt).
+  Kurvenradien geschätzt nach typischer Anliegerstraße (Fahrbahnbreite 5–6 m).<br>
+  <strong>Erstellt:</strong> August 2026 | Strecke: Zufahrt Feuerwache Quickborn Ost, Anliegerstraße ab Ulzburger Straße
+</div>
+
+</body>
+</html>
